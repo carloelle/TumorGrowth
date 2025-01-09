@@ -7,8 +7,71 @@ library(reticulate)
 library(circlize)
 library(data.table)
 
-#use or install your python environment where you have installed Giotto
 use_python('/home/carlo/.local/share/r-miniconda/envs/giotto_env/bin/python', required = TRUE)
+
+# Load data files
+load("~/TumorGrowth/Wanglong/GSMobjfinal.Robj")
+load("~/TumorGrowth/Wanglong/signfinal.Robj")
+sign$EMR <- NULL
+
+# Load Valdolivas datasets
+V573_1 <- Load10X_Spatial('~/TumorGrowth/Valdolivas/SN048_A121573_Rep1')
+V573_2 <- Load10X_Spatial('~/TumorGrowth/Valdolivas/SN048_A121573_Rep2')
+V371_1 <- Load10X_Spatial('~/TumorGrowth/Valdolivas/SN048_A416371_Rep1')
+V371_2 <- Load10X_Spatial('~/TumorGrowth/Valdolivas/SN048_A416371_Rep2')
+V838_1 <- Load10X_Spatial('~/TumorGrowth/Valdolivas/SN84_A120838_Rep1')
+V838_2 <- Load10X_Spatial('~/TumorGrowth/Valdolivas/SN84_A120838_Rep2')
+V763_1 <- Load10X_Spatial('~/TumorGrowth/Valdolivas/SN123_A551763_Rep1')
+V763_2 <- Load10X_Spatial('~/TumorGrowth/Valdolivas/SN124_A551763_Rep2')
+V688_1 <- Load10X_Spatial('~/TumorGrowth/Valdolivas/SN123_A595688_Rep1')
+V688_2 <- Load10X_Spatial('~/TumorGrowth/Valdolivas/SN124_A595688_Rep2')
+V015_1 <- Load10X_Spatial('~/TumorGrowth/Valdolivas/SN123_A798015_Rep1')
+V015_2 <- Load10X_Spatial('~/TumorGrowth/Valdolivas/SN124_A798015_Rep2')
+V797_1 <- Load10X_Spatial('~/TumorGrowth/Valdolivas/SN123_A938797_Rep1_X')
+V797_2 <- Load10X_Spatial('~/TumorGrowth/Valdolivas/SN124_A938797_Rep2')
+
+# Custom subsetting function for Visium objects
+custom_subset_visium <- function(seurat_object, cells) {
+  # Subset the counts matrix
+  subset_counts <- seurat_object@assays$Spatial@layers$counts[, cells, drop = FALSE]
+  # Create a new Seurat object with the subsetted counts matrix and metadata
+  new_seurat_object <- CreateSeuratObject(counts = subset_counts, meta.data = seurat_object@meta.data[cells, ])
+
+  # Subset the image data if present
+  if (!is.null(seurat_object@images)) {
+    new_seurat_object@images <- seurat_object@images
+    for (image_name in names(seurat_object@images)) {
+      new_seurat_object@images[[image_name]]@boundaries$centroids@coords <- seurat_object@images[[image_name]]@boundaries$centroids@coords[cells, , drop = FALSE]
+    }
+  }
+
+  # Subset the graph data if present
+  if (!is.null(seurat_object@graphs)) {
+    graph_object <- as.Graph(subset_counts)
+    new_seurat_object@graphs <- list(graph = graph_object)
+  }
+
+  return(new_seurat_object)
+}
+
+# Create combined spatial object
+allspatial <- CreateSeuratObject(counts = Matrix(cbind(GSM7058756_C1@assays$Spatial@layers$counts,
+                                                     GSM7058757_C2@assays$Spatial@layers$counts,
+                                                     GSM7058758_C3@assays$Spatial@layers$counts,
+                                                     GSM7058759_C4@assays$Spatial@layers$counts), sparse = TRUE),
+                               meta.data = as.data.frame(rbind(GSM7058756_C1@meta.data,
+                                                               GSM7058757_C2@meta.data,
+                                                               GSM7058758_C3@meta.data,
+                                                               GSM7058759_C4@meta.data)))
+
+spotstoconsider <- intersect(rownames(allspatial@meta.data)[allspatial$Fibroblasts_C2L > quantile(allspatial$Fibroblasts_C2L, .85)],
+                             rownames(allspatial@meta.data)[allspatial$Fibroblasts_C2L_percentage > 20])
+
+GSM7058759_C4_fibroenriched <- custom_subset_visium(GSM7058759_C4, intersect(rownames(GSM7058759_C4@meta.data), spotstoconsider))
+GSM7058756_C1_fibroenriched <- custom_subset_visium(GSM7058756_C1, intersect(rownames(GSM7058756_C1@meta.data), spotstoconsider))
+GSM7058757_C2_fibroenriched <- custom_subset_visium(GSM7058757_C2, intersect(rownames(GSM7058757_C2@meta.data), spotstoconsider))
+GSM7058758_C3_fibroenriched <- custom_subset_visium(GSM7058758_C3, intersect(rownames(GSM7058758_C3@meta.data), spotstoconsider))
+rm(allspatial)
 
 # Function to process metadata for specific assay
 deconv_metadata <- function(data, deconv_data, exp_id, cols, assay = "Spatial") {
