@@ -14,6 +14,12 @@ load("~/TumorGrowth/Wanglong/GSMobjfinal.Robj")
 load("~/TumorGrowth/Wanglong/signfinal.Robj")
 sign$EMR <- NULL
 
+deconvKorean<-read.csv('~/TumorGrowth/Valdolivas/DeconvKoreanCohort/W_cell_density_q05.csv')
+deconvBelgian<-read.csv('~/TumorGrowth/Valdolivas/DeconvBelgianCohort/W_cell_density_q05.csv')
+
+colnames(deconvKorean)=gsub('q05_spot_factors','',colnames(deconvKorean))
+colnames(deconvBelgian)=gsub('q05_spot_factors','',colnames(deconvBelgian))
+
 # Load Valdolivas datasets
 V573_1 <- Load10X_Spatial('~/TumorGrowth/Valdolivas/SN048_A121573_Rep1')
 V573_2 <- Load10X_Spatial('~/TumorGrowth/Valdolivas/SN048_A121573_Rep2')
@@ -176,6 +182,47 @@ inverse_fisher_z <- function(z) {
   return((exp(2 * z) - 1) / (exp(2 * z) + 1))
 }
 
+
+    
+colnames(deconvKorean)=gsub('$','_KoreanDeconv',colnames(deconvKorean))
+deconvKorean<-process_C2L_Korean(deconvKorean,df = T)
+
+deconvKorean1<-deconvKorean[deconvKorean$Myofibroblasts_KoreanDeconv+deconvKorean$Stromal.1_KoreanDeconv+deconvKorean$Stromal.2_KoreanDeconv+deconvKorean$Stromal.3_KoreanDeconv>quantile(deconvKorean$Myofibroblasts_KoreanDeconv+deconvKorean$Stromal.1_KoreanDeconv+deconvKorean$Stromal.2_KoreanDeconv+deconvKorean$Stromal.3_KoreanDeconv,0.85),]
+deconvKorean1<-deconvKorean1[deconvKorean1$Myofibroblasts_KoreanDeconv_percentageKorean+deconvKorean1$Stromal.1_KoreanDeconv_percentageKorean+deconvKorean1$Stromal.2_KoreanDeconv_percentageKorean+deconvKorean1$Stromal.3_KoreanDeconv_percentageKorean>0.2,]
+
+
+deconvKorean1<-deconvKorean1%>%
+  nest_by(ST.exp_KoreanDeconv)
+
+
+V573_1_fibro<-V573_1[,deconvKorean1$data[[1]]$ST.barcode_KoreanDeconv]
+V573_2_fibro<-V573_2[,deconvKorean1$data[[2]]$ST.barcode_KoreanDeconv]
+
+
+V371_1_fibro<-V371_1[,deconvKorean1$data[[3]]$ST.barcode_KoreanDeconv]
+V371_2_fibro<-V371_2[,deconvKorean1$data[[4]]$ST.barcode_KoreanDeconv]
+
+
+V763_1_fibro<-V763_1[,deconvKorean1$data[[5]]$ST.barcode_KoreanDeconv]
+V763_2_fibro<-V763_2[,deconvKorean1$data[[8]]$ST.barcode_KoreanDeconv]
+
+
+V688_1_fibro<-V688_1[,deconvKorean1$data[[6]]$ST.barcode_KoreanDeconv]
+V688_2_fibro<-V688_2[,deconvKorean1$data[[9]]$ST.barcode_KoreanDeconv]
+
+
+V015_1_fibro<-V015_1[,deconvKorean1$data[[7]]$ST.barcode_KoreanDeconv]
+V015_2_fibro<-V015_2[,deconvKorean1$data[[10]]$ST.barcode_KoreanDeconv]
+
+
+V797_1_fibro<-V797_1[,deconvKorean1$data[[14]]$ST.barcode_KoreanDeconv]
+V797_2_fibro<-V797_2[,deconvKorean1$data[[11]]$ST.barcode_KoreanDeconv]
+
+
+V838_1_fibro<-V838_1[,deconvKorean1$data[[12]]$ST.barcode_KoreanDeconv]
+V838_2_fibro<-V838_2[,deconvKorean1$data[[13]]$ST.barcode_KoreanDeconv]
+
+    
 # Example: Extract metadata and calculate correlations
 metadata_list <- list(
   extract_metadata(V763_1_fibro, 139, 156),
