@@ -11,7 +11,6 @@ mrCAF_new<-read.csv('mrCAF_New.csv')
 setwd('/media/carlo/FFF9-F0A1/NatureCancer_2024/Fibroblasts/')
 
 fibro_gse<-mrCAF_new%>%filter(Dataset%in%c('C.Smillie','G.Li','GSE125527'))
-
 fibro_gse<-mrCAF_new
 
 fibro_gse <- fibro_gse %>%
@@ -41,6 +40,13 @@ HealthyInflamedUninflamed_mtx <- fibro_mtx[fibro_gse$X.1,]
 
 HealthyInflamedUninflamed <- CreateSeuratObject(counts = t(HealthyInflamedUninflamed_mtx), meta.data = fibro_gse)
 Idents(HealthyInflamedUninflamed) = 'Class'
+
+
+
+epifibro <- qread('/media/carlo/FFF9-F0A1/NatureCancer_2024/Fibroblasts/EpiFibro.qs')
+epi_mtx <- epifibro[[1]] ##epithelial part 
+HealthyInflamedUninflamed <- epifibro[[2]] ##fibroblast part 
+
 
 scores <- HealthyInflamedUninflamed@meta.data$mrCAFMean
 
@@ -228,14 +234,14 @@ for(i in seq_along(thresh_values)){
   pos_colname <- paste0("EMR_pos_", thresh_label)
   
   # Add a binary metadata column: TRUE if the cell's score > threshold
-  HealthyInflamedUninflamed <- AddMetaData(
-    HealthyInflamedUninflamed,
+  epi_mtx <- AddMetaData(
+    epi_mtx,
     metadata = scores > threshold_value,
     col.name = pos_colname
   )
   
   # Extract updated metadata
-  meta <- HealthyInflamedUninflamed@meta.data
+  meta <- epi_mtx@meta.data
   
   # Build a contingency table: rows = Class, columns = positivity (TRUE/FALSE)
   tab <- table(meta$Class, meta[[pos_colname]])
@@ -351,6 +357,6 @@ p <- ggplot(df_tidy, aes(x = Class, y = Threshold, fill = Proportion)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 # Save the plot to PDF
-pdf('ggpubr_Inflamed_vs_Healthy_Uninflamed_5thQuantiles_EMR.pdf', width = 3.5, height = 10)
+pdf('ggpubr_Inflamed_vs_Healthy_Uninflamed_5thQuantiles_EMR1.pdf', width = 3.5, height = 10)
 print(p)
 dev.off()
